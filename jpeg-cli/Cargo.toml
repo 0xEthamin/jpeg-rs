@@ -1,0 +1,13 @@
+[package]
+name = "jpeg-cli"
+version = "0.1.0"
+edition = "2024"
+description = "Command-line JPEG encoder"
+
+[[bin]]
+name = "jpeg-encode"
+path = "src/main.rs"
+
+[dependencies]
+jpeg-core = { path = "../jpeg-core" }
+jpeg-io = { path = "../jpeg-io" }

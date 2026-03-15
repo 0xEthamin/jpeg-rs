@@ -1,0 +1,8 @@
+[package]
+name = "jpeg-io"
+version = "0.1.0"
+edition = "2024"
+description = "Image source decoders for jpeg-rs (PPM, raw buffers)"
+
+[dependencies]
+jpeg-core = { path = "../jpeg-core" }

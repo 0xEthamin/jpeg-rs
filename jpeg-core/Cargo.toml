@@ -1,0 +1,9 @@
+[package]
+name = "jpeg-core"
+version = "0.1.0"
+edition = "2024"
+description = "JPEG baseline encoder conforming to ITU-T T.81 / ISO 10918-1"
+
+[dependencies]
+
+[dev-dependencies]

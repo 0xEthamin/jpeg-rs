@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "jpeg-core",
+    "jpeg-io",
+    "jpeg-cli",
+]
+resolver = "2"
