@@ -40,6 +40,7 @@ struct Options
     output: String,
     quality: u8,
     subsampling: Subsampling,
+    restart_interval: u16,
 }
 
 fn parse_args(args: &[String]) -> Result<Options, String>
@@ -48,6 +49,7 @@ fn parse_args(args: &[String]) -> Result<Options, String>
     let mut output: Option<String> = None;
     let mut quality: u8 = 85;
     let mut subsampling = Subsampling::S420;
+    let mut restart_interval: u16 = 0;
 
     let mut i = 0;
     while i < args.len()
@@ -90,6 +92,15 @@ fn parse_args(args: &[String]) -> Result<Options, String>
                     _ => return Err("subsampling must be 444, 422, or 420".into()),
                 };
             }
+            "-r" | "--restart" =>
+            {
+                i += 1;
+                restart_interval = args
+                    .get(i)
+                    .ok_or("-r requires a value")?
+                    .parse()
+                    .map_err(|_| "restart interval must be a number 0-65535")?;
+            }
             "-h" | "--help" =>
             {
                 print_usage();
@@ -121,7 +132,7 @@ fn parse_args(args: &[String]) -> Result<Options, String>
             .into_owned()
     });
 
-    Ok(Options { input, output, quality, subsampling })
+    Ok(Options { input, output, quality, subsampling, restart_interval })
 }
 
 fn run(opts: &Options) -> Result<(), Box<dyn std::error::Error>>
@@ -145,6 +156,7 @@ fn run(opts: &Options) -> Result<(), Box<dyn std::error::Error>>
     {
         quality: opts.quality,
         subsampling: opts.subsampling,
+        restart_interval: opts.restart_interval,
         ..EncoderConfig::default()
     };
 
@@ -158,9 +170,10 @@ fn run(opts: &Options) -> Result<(), Box<dyn std::error::Error>>
 
     println!
     (
-        "Encoding JPEG (quality={}, subsampling={:?}) ...",
+        "Encoding JPEG (quality={}, subsampling={:?}, restart={}) ...",
         opts.quality,
         opts.subsampling,
+        opts.restart_interval,
     );
     let jpeg_data = jpeg_core::encode(&raw, &config)?;
 
@@ -186,6 +199,7 @@ fn print_usage()
          \x20 -o, --output <file>       Output JPEG file (default: input.jpg)\n\
          \x20 -q, --quality <1-100>     Quality factor (default: 85)\n\
          \x20 -s, --subsampling <mode>  Chroma subsampling: 444, 422, 420 (default: 420)\n\
+         \x20 -r, --restart <n>         Restart interval in MCUs (default: 0 = disabled)\n\
          \x20 -h, --help                Show this help"
     );
 }

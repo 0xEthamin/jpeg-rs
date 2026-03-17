@@ -100,6 +100,8 @@ pub fn build_table(freq: &[u32], max_symbol: usize) -> HuffmanTable
         return HuffmanTable { bits, values, ehufco, ehufsi };
     }
 
+    let _real_count = symbols.len();
+
     let code_lengths = compute_code_lengths(&symbols);
 
     let mut bits = [0u32; 33]; // bits[1..=32]
@@ -169,7 +171,6 @@ pub fn build_table(freq: &[u32], max_symbol: usize) -> HuffmanTable
 fn compute_code_lengths(symbols: &[(u8, u32)]) -> Vec<(u8, u8)>
 {
     let n = symbols.len();
-
     let total_leaves = n + 1; // +1 for reserved
     let max_nodes = 2 * total_leaves;
     let mut node_freq = vec![0u64; max_nodes];
@@ -180,7 +181,7 @@ fn compute_code_lengths(symbols: &[(u8, u32)]) -> Vec<(u8, u8)>
     {
         node_freq[i] = symbols[i].1 as u64;
     }
-
+    // Reserved code point: frequency 1, at the highest index among leaves
     node_freq[n] = 1;
 
     let mut next_internal = total_leaves;
@@ -201,6 +202,7 @@ fn compute_code_lengths(symbols: &[(u8, u32)]) -> Vec<(u8, u8)>
 
     let root = next_internal - 1;
 
+    // Compute depths for REAL symbols only (not the reserved node).
     let mut result = Vec::with_capacity(n);
     for i in 0..n
     {
@@ -240,6 +242,7 @@ fn find_min_unused
 
 fn adjust_bits(bits: &mut [u32; 33], _remove_reserved: bool)
 {
+    // Step 1: Limit to 16 bits (standard algorithm from K.3)
     let mut i = 32;
     while i > 16
     {
@@ -253,6 +256,8 @@ fn adjust_bits(bits: &mut [u32; 33], _remove_reserved: bool)
 
             if j == 0
             {
+                // Degenerate case: no shorter codes available.
+                // Move all codes one level up.
                 bits[i - 1] += bits[i];
                 bits[i] = 0;
                 break;

@@ -11,6 +11,7 @@ pub const MARKER_DHT: u16 = 0xFFC4;
 pub const MARKER_SOF0: u16 = 0xFFC0; // Baseline DCT
 pub const MARKER_SOS: u16 = 0xFFDA;
 pub const MARKER_DRI: u16 = 0xFFDD;
+pub const MARKER_RST0: u16 = 0xFFD0;
 
 pub fn write_soi(w: &mut BitWriter)
 {
@@ -22,16 +23,25 @@ pub fn write_eoi(w: &mut BitWriter)
     w.write_u16_be(MARKER_EOI);
 }
 
+
 pub fn write_app0_jfif(w: &mut BitWriter, config: &EncoderConfig)
 {
     w.write_u16_be(MARKER_APP0);
-    w.write_u16_be(16); // Length (including length bytes, excluding marker)
+    w.write_u16_be(16); // Length
+
+    // Identifier: "JFIF\0"
     w.write_raw_bytes(&[0x4A, 0x46, 0x49, 0x46, 0x00]);
-    w.write_raw_byte(1);
-    w.write_raw_byte(2);
+
+    // Version 1.02
+    w.write_raw_byte(1);  // Major
+    w.write_raw_byte(2);  // Minor
+
+    // Density
     w.write_raw_byte(config.density_units);
     w.write_u16_be(config.x_density);
     w.write_u16_be(config.y_density);
+
+    // No thumbnail
     w.write_raw_byte(0);
     w.write_raw_byte(0);
 }
@@ -39,8 +49,8 @@ pub fn write_app0_jfif(w: &mut BitWriter, config: &EncoderConfig)
 pub fn write_dqt(w: &mut BitWriter, table_id: u8, table: &QuantTable)
 {
     w.write_u16_be(MARKER_DQT);
-    w.write_u16_be(67);
-    w.write_raw_byte(table_id & 0x0F);
+    w.write_u16_be(67); // 2 + 1 + 64 = 67
+    w.write_raw_byte(table_id & 0x0F); // Pq=0 (8-bit) | Tq
     for &qk in &table.values
     {
         w.write_raw_byte(qk as u8);
@@ -91,11 +101,11 @@ pub fn write_sof0(
     w.write_u16_be(MARKER_SOF0);
 
     let nf = components.len() as u16;
-    w.write_u16_be(8 + 3 * nf);
+    w.write_u16_be(8 + 3 * nf); // Lf
 
-    w.write_raw_byte(8);
-    w.write_u16_be(height);
-    w.write_u16_be(width);
+    w.write_raw_byte(8); // Sample precision P = 8 bits
+    w.write_u16_be(height); // Y (number of lines)
+    w.write_u16_be(width);  // X (samples per line)
     w.write_raw_byte(nf as u8);
 
     for comp in components
@@ -121,7 +131,7 @@ pub fn write_sos(
     w.write_u16_be(MARKER_SOS);
 
     let ns = components.len() as u16;
-    w.write_u16_be(6 + 2 * ns);
+    w.write_u16_be(6 + 2 * ns); // Ls
 
     w.write_raw_byte(ns as u8);
 
@@ -131,9 +141,9 @@ pub fn write_sos(
         w.write_raw_byte((comp.dc_table_id << 4) | comp.ac_table_id);
     }
 
-    w.write_raw_byte(0);
-    w.write_raw_byte(63);
-    w.write_raw_byte(0);
+    w.write_raw_byte(0);  // Ss
+    w.write_raw_byte(63); // Se
+    w.write_raw_byte(0);  // Ah=0, Al=0
 }
 
 pub fn write_dri(w: &mut BitWriter, restart_interval: u16)
@@ -141,7 +151,13 @@ pub fn write_dri(w: &mut BitWriter, restart_interval: u16)
     if restart_interval > 0
     {
         w.write_u16_be(MARKER_DRI);
-        w.write_u16_be(4); // Length
+        w.write_u16_be(4); // Lr = 4
         w.write_u16_be(restart_interval);
     }
+}
+
+pub fn write_rst(w: &mut BitWriter, restart_counter: u16)
+{
+    let m = (restart_counter % 8) as u16;
+    w.write_u16_be(MARKER_RST0 + m);
 }

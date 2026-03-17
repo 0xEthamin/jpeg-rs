@@ -46,8 +46,7 @@ fn encode_dc_coefficient
     let code = table.ehufco[ssss as usize];
     let size = table.ehufsi[ssss as usize];
 
-    debug_assert!
-    (
+    debug_assert!(
         size > 0,
         "DC category {} (diff={}) has no Huffman code (ehufsi=0). \
          This indicates a bug in Huffman table construction.",

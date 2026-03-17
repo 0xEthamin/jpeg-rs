@@ -79,15 +79,15 @@ fn encode_color(image: &RawImage, config: &EncoderConfig) -> Result<Vec<u8>>
     let est_size = (w as usize * h as usize) / 2;
     let mut writer = BitWriter::with_capacity(est_size);
 
+    // --- File structure per JFIF 1.02 + T.81 Annex B ---
     marker::write_soi(&mut writer);
-
     marker::write_app0_jfif(&mut writer, config);
 
     marker::write_dqt(&mut writer, 0, &lum_qt);
     marker::write_dqt(&mut writer, 1, &chr_qt);
 
     let (hy, vy, _, _, _, _) = config.subsampling.factors();
-    let frame_components = 
+    let frame_components =
     [
         FrameComponent { id: 1, h_sampling: hy, v_sampling: vy, quant_table_id: 0 },
         FrameComponent { id: 2, h_sampling: 1, v_sampling: 1, quant_table_id: 1 },
@@ -102,7 +102,7 @@ fn encode_color(image: &RawImage, config: &EncoderConfig) -> Result<Vec<u8>>
 
     marker::write_dri(&mut writer, config.restart_interval);
 
-    let scan_components = 
+    let scan_components =
     [
         ScanComponent { selector: 1, dc_table_id: 0, ac_table_id: 0 },
         ScanComponent { selector: 2, dc_table_id: 1, ac_table_id: 1 },
@@ -120,7 +120,6 @@ fn encode_color(image: &RawImage, config: &EncoderConfig) -> Result<Vec<u8>>
     );
 
     writer.flush_with_ones();
-
     marker::write_eoi(&mut writer);
 
     Ok(writer.into_bytes())
@@ -146,7 +145,7 @@ fn encode_grayscale(image: &RawImage, config: &EncoderConfig) -> Result<Vec<u8>>
     marker::write_app0_jfif(&mut writer, config);
     marker::write_dqt(&mut writer, 0, &lum_qt);
 
-    let frame_components = 
+    let frame_components =
     [
         FrameComponent { id: 1, h_sampling: 1, v_sampling: 1, quant_table_id: 0 },
     ];
@@ -156,19 +155,18 @@ fn encode_grayscale(image: &RawImage, config: &EncoderConfig) -> Result<Vec<u8>>
     marker::write_dht(&mut writer, 1, 0, &ac_table);
     marker::write_dri(&mut writer, config.restart_interval);
 
-    let scan_components = 
+    let scan_components =
     [
         ScanComponent { selector: 1, dc_table_id: 0, ac_table_id: 0 },
     ];
     marker::write_sos(&mut writer, &scan_components);
 
-    let mut prev_dc: i16 = 0;
-    huffman_encoder::encode_blocks
+    encode_grayscale_scan
     (
-        &y_data.quantized,
+        &y_data,
+        config,
         &dc_table,
         &ac_table,
-        &mut prev_dc,
         &mut writer,
     );
 
@@ -205,6 +203,41 @@ fn process_component
     }
 }
 
+fn encode_grayscale_scan
+(
+    y_data: &ComponentData,
+    config: &EncoderConfig,
+    dc_table: &HuffmanTable,
+    ac_table: &HuffmanTable,
+    writer: &mut BitWriter,
+)
+{
+    let total_mcus = y_data.quantized.len();
+    let ri = config.restart_interval as usize;
+    let mut prev_dc: i16 = 0;
+    let mut rst_counter: u16 = 0;
+
+    for mcu_idx in 0..total_mcus
+    {
+        if ri > 0 && mcu_idx > 0 && mcu_idx % ri == 0
+        {
+            writer.flush_with_ones();
+            marker::write_rst(writer, rst_counter);
+            rst_counter += 1;
+            prev_dc = 0;
+        }
+
+        huffman_encoder::encode_block
+        (
+            &y_data.quantized[mcu_idx],
+            dc_table,
+            ac_table,
+            &mut prev_dc,
+            writer,
+        );
+    }
+}
+
 fn encode_interleaved_scan
 (
     y_data: &ComponentData,
@@ -222,8 +255,8 @@ fn encode_interleaved_scan
     let h_max = config.subsampling.h_max() as u32;
     let v_max = config.subsampling.v_max() as u32;
 
-    let mcu_width = h_max; // blocks horizontally per MCU for Y
-    let mcu_height = v_max; // blocks vertically per MCU for Y
+    let mcu_width = h_max;
+    let mcu_height = v_max;
 
     let y_blocks_h = (y_data.width + 7) / 8;
     let y_blocks_v = (y_data.height + 7) / 8;
@@ -237,10 +270,24 @@ fn encode_interleaved_scan
     let mut cb_prev_dc: i16 = 0;
     let mut cr_prev_dc: i16 = 0;
 
+    let ri = config.restart_interval as usize;
+    let mut mcu_count: usize = 0;
+    let mut rst_counter: u16 = 0;
+
     for mcu_row in 0..mcus_v
     {
         for mcu_col in 0..mcus_h
         {
+            if ri > 0 && mcu_count > 0 && mcu_count % ri == 0
+            {
+                writer.flush_with_ones();
+                marker::write_rst(writer, rst_counter);
+                rst_counter += 1;
+                y_prev_dc = 0;
+                cb_prev_dc = 0;
+                cr_prev_dc = 0;
+            }
+
             for v in 0..vy as u32
             {
                 for h in 0..hy as u32
@@ -273,6 +320,7 @@ fn encode_interleaved_scan
                 }
             }
 
+            // Encode Cb block
             let cb_idx = (mcu_row * cb_blocks_h + mcu_col) as usize;
             if cb_idx < cb_data.quantized.len()
             {
@@ -286,6 +334,7 @@ fn encode_interleaved_scan
                 );
             }
 
+            // Encode Cr block
             let cr_idx = (mcu_row * cr_blocks_h + mcu_col) as usize;
             if cr_idx < cr_data.quantized.len()
             {
@@ -298,6 +347,8 @@ fn encode_interleaved_scan
                     writer,
                 );
             }
+
+            mcu_count += 1;
         }
     }
 }

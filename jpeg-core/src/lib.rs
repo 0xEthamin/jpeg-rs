@@ -12,10 +12,4 @@ pub mod types;
 
 pub use encoder::encode;
 pub use error::Error;
-pub use types::
-{
-    ColorSpace,
-    EncoderConfig,
-    RawImage,
-    Subsampling,
-};
+pub use types::{ColorSpace, EncoderConfig, RawImage, Subsampling};
