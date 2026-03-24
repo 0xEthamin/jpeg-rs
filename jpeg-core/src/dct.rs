@@ -10,7 +10,7 @@
 //! function. Intuitively, "how much of this particular spatial frequency
 //! pattern is present in this block".
 //!
-//! The top-left coefficient (index [0,0]) is called the **DC coefficient**.
+//! The top-left coefficient (index \[0,0\]) is called the **DC coefficient**.
 //! It represents the average value of all 64 samples in the block. The
 //! zero-frequency component. The remaining 63 coefficients are called
 //! **AC coefficients** and represent progressively higher spatial

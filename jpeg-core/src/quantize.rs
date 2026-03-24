@@ -69,11 +69,11 @@ use crate::block::Block8x8;
 /// Usage: to read the DCT coefficients in zig-zag order, access
 /// `dct_block[ZIG_ZAG[k]]` for k = 0, 1, …, 63.
 ///
-/// - k = 0 -> ZIG_ZAG[0] = 0 -> coefficient (0,0) = DC
-/// - k = 1 -> ZIG_ZAG[1] = 1 -> coefficient (0,1)
-/// - k = 2 -> ZIG_ZAG[2] = 8 -> coefficient (1,0)
+/// - k = 0 -> ZIG_ZAG\[0\] = 0 -> coefficient (0,0) = DC
+/// - k = 1 -> ZIG_ZAG\[1\] = 1 -> coefficient (0,1)
+/// - k = 2 -> ZIG_ZAG\[2\] = 8 -> coefficient (1,0)
 /// - …
-/// - k = 63 -> ZIG_ZAG[63] = 63 -> coefficient (7,7)
+/// - k = 63 -> ZIG_ZAG\[63\] = 63 -> coefficient (7,7)
 pub const ZIG_ZAG: [u8; 64] = 
 [
      0,  1,  8, 16,  9,  2,  3, 10,
@@ -236,7 +236,7 @@ impl QuantTable
 /// # Output
 ///
 /// A 64-element array of quantized coefficients in **zig-zag order**.
-/// Element [0] is the quantized DC coefficient. Elements [1..63] are the
+/// Element \[0\] is the quantized DC coefficient. Elements \[1..63\] are the
 /// quantized AC coefficients in the order they will be entropy-coded.
 ///
 /// This output can be passed directly to the Huffman encoder.
@@ -418,7 +418,7 @@ mod tests
         // The DC coefficient (natural index 0) must be at zig-zag position 0.
         assert_eq!(ZIG_ZAG[0], 0);
     }
-    
+
     #[test]
     fn natural_values_accessor()
     {

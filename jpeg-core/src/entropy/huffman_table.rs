@@ -569,7 +569,7 @@ fn build_empty_table() -> HuffmanTable
 /// # Arguments
 ///
 /// * `blocks` - quantized blocks in zig-zag order (as produced by
-///   [`crate::quantize::quantize_block`]). Element [0] of each block is
+///   [`crate::quantize::quantize_block`]). Element \[0\] of each block is
 ///   the quantized DC coefficient; elements [1..63] are AC coefficients.
 pub fn collect_frequencies
 (
