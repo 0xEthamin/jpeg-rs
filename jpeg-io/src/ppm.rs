@@ -367,4 +367,82 @@ mod tests
         // 1000 * 255 / 1000 = 255
         assert_eq!(img.data[2], 255);
     }
+
+    #[test]
+    fn reject_too_large_dimensions()
+    {
+        let data = b"P3\n70000 1\n255\n0 0 0\n";
+        let result = read_ppm(Cursor::new(data.as_ref()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn read_p6_with_comment_before_width()
+    {
+        let mut data = Vec::new();
+        data.extend_from_slice(b"P6\n# comment here\n1 1\n255\n");
+        data.extend_from_slice(&[100, 200, 50]);
+        let img = read_ppm(Cursor::new(data)).unwrap();
+        assert_eq!(img.width, 1);
+        assert_eq!(img.height, 1);
+        assert_eq!(img.data, [100, 200, 50]);
+    }
+
+    #[test]
+    fn read_p3_normalizes_non_255_maxval()
+    {
+        // maxval=100, sample=50 -> normalized ~128
+        let data = b"P3\n1 1\n100\n50 0 100\n";
+        let img = read_ppm(Cursor::new(data.as_ref())).unwrap();
+        assert!((img.data[0] as i16 - 128).abs() <= 1);
+        assert_eq!(img.data[1], 0);
+        assert_eq!(img.data[2], 255);
+    }
+
+    #[test]
+    fn p6_truncated_data_fails()
+    {
+        // Only 2 bytes of pixel data when 3 are needed
+        let mut data = Vec::new();
+        data.extend_from_slice(b"P6\n1 1\n255\n");
+        data.extend_from_slice(&[100, 200]);
+        let result = read_ppm(Cursor::new(data));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn reject_too_large_width()
+    {
+        let data = b"P3\n70000 1\n255\n0 0 0\n";
+        let result = read_ppm(Cursor::new(data.as_ref()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn reject_too_large_height()
+    {
+        let data = b"P3\n1 70000\n255\n0 0 0\n";
+        let result = read_ppm(Cursor::new(data.as_ref()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn read_p3_token_without_trailing_whitespace()
+    {
+        // Token "P3" suivi de newline, puis données sans newline finale
+        // Force read_token à retourner un token sur EOF
+        let data = b"P3\n1 1\n255\n10 20 30";
+        let img = read_ppm(Cursor::new(data.as_ref())).unwrap();
+        assert_eq!(img.data, [10, 20, 30]);
+    }
+
+    #[test]
+    fn read_p6_comment_between_height_and_maxval()
+    {
+        let mut data = Vec::new();
+        data.extend_from_slice(b"P6\n1 1\n# inline comment\n255\n");
+        data.extend_from_slice(&[50, 100, 150]);
+        let img = read_ppm(Cursor::new(data)).unwrap();
+        assert_eq!(img.data, [50, 100, 150]);
+    }
 }

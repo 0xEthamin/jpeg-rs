@@ -795,4 +795,53 @@ mod tests
         let (_, ac_freq) = collect_frequencies(&[block]);
         assert_eq!(ac_freq.counts[0x12], 1); // run=1, ssss=2
     }
+
+    #[test]
+    fn dc_frequencies_default()
+    {
+        let freq = DcFrequencies::default();
+        assert_eq!(freq.counts, [0u32; MAX_DC_CATEGORIES]);
+    }
+
+    #[test]
+    fn ac_frequencies_default()
+    {
+        let freq = AcFrequencies::default();
+        assert_eq!(freq.counts, [0u32; 256]);
+    }
+
+    #[test]
+    fn build_table_very_skewed_frequencies()
+    {
+        // Force the adjust_bits degenerate path (j==0 branch):
+        // Many symbols with frequency 1 -> very deep tree -> needs heavy limiting
+        let mut freq = [0u32; 256];
+        // One dominant symbol and 255 rare ones
+        freq[0] = 1_000_000;
+        for count in freq.iter_mut().skip(1)
+        {
+            *count = 1;
+        }
+        let table = build_table(&freq, 255);
+        for i in 0..256
+        {
+            assert!(
+                table.ehufsi[i] <= 16,
+                "symbol {} has code length {} > 16",
+                i, table.ehufsi[i],
+            );
+        }
+    }
+
+    #[test]
+    fn build_table_two_symbols()
+    {
+        // Exactly 2 symbols: covers the minimal non-trivial tree
+        let freq = [50u32, 100];
+        let table = build_table(&freq, 1);
+        assert!(table.ehufsi[0] > 0);
+        assert!(table.ehufsi[1] > 0);
+        // More frequent symbol should have shorter or equal code
+        assert!(table.ehufsi[1] <= table.ehufsi[0]);
+    }
 }

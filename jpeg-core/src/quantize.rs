@@ -418,4 +418,13 @@ mod tests
         // The DC coefficient (natural index 0) must be at zig-zag position 0.
         assert_eq!(ZIG_ZAG[0], 0);
     }
+    
+    #[test]
+    fn natural_values_accessor()
+    {
+        let qt = QuantTable::from_standard(&STD_LUMINANCE_QUANT, 50);
+        let natural = qt.natural_values();
+        // Quality 50 = identity, so natural values == standard table
+        assert_eq!(*natural, STD_LUMINANCE_QUANT);
+    }
 }

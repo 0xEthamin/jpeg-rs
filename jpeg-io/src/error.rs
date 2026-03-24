@@ -52,3 +52,62 @@ impl From<io::Error> for Error
 
 /// A specialized `Result` type for image I/O operations.
 pub type Result<T> = core::result::Result<T, Error>;
+
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+    use std::io;
+
+    #[test]
+    fn display_io_error()
+    {
+        let inner = io::Error::new(io::ErrorKind::NotFound, "file gone");
+        let e = Error::Io(inner);
+        let msg = format!("{}", e);
+        assert!(msg.contains("file gone"));
+    }
+
+    #[test]
+    fn display_invalid_format()
+    {
+        let e = Error::InvalidFormat("bad magic".into());
+        let msg = format!("{}", e);
+        assert!(msg.contains("bad magic"));
+    }
+
+    #[test]
+    fn display_value_out_of_range()
+    {
+        let e = Error::ValueOutOfRange("maxval 99999".into());
+        let msg = format!("{}", e);
+        assert!(msg.contains("maxval 99999"));
+    }
+
+    #[test]
+    fn source_returns_inner_io_error()
+    {
+        let inner = io::Error::new(io::ErrorKind::BrokenPipe, "broken");
+        let e = Error::Io(inner);
+        let src = std::error::Error::source(&e);
+        assert!(src.is_some());
+    }
+
+    #[test]
+    fn source_returns_none_for_non_io()
+    {
+        let e = Error::InvalidFormat("x".into());
+        assert!(std::error::Error::source(&e).is_none());
+
+        let e = Error::ValueOutOfRange("y".into());
+        assert!(std::error::Error::source(&e).is_none());
+    }
+
+    #[test]
+    fn from_io_error()
+    {
+        let io_err = io::Error::new(io::ErrorKind::PermissionDenied, "nope");
+        let e: Error = io_err.into();
+        assert!(matches!(e, Error::Io(_)));
+    }
+}

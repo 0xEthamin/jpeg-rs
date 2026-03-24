@@ -402,4 +402,128 @@ mod tests
     {
         assert_eq!(encode_additional_bits(1, 1), 1);
     }
+
+    #[test]
+    fn encode_dc_missing_code_returns_error()
+    {
+        // Table vide : aucun code assigné
+        let empty_table = HuffmanTable
+        {
+            bits: [0u8; 16],
+            values: vec![],
+            ehufco: [0u32; 256],
+            ehufsi: [0u8; 256],  // Tout à 0 = pas de code
+        };
+        let block = [0i16; 64]; // DC diff = 0, category 0
+        let mut writer = BitWriter::with_capacity(64);
+        let mut prev_dc = 1i16; // Force diff != 0 -> category 1 -> missing
+
+        let result = encode_block(
+            &block, &empty_table, &empty_table, &mut prev_dc, &mut writer,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn encode_ac_eob_missing_code_returns_error()
+    {
+        // Table avec code pour DC category 0 mais pas pour AC EOB (0x00)
+        let mut dc_table = HuffmanTable
+        {
+            bits: [0u8; 16],
+            values: vec![],
+            ehufco: [0u32; 256],
+            ehufsi: [0u8; 256],
+        };
+        dc_table.ehufsi[0] = 1; // Category 0 has a code
+        dc_table.ehufco[0] = 0;
+
+        let ac_table = HuffmanTable
+        {
+            bits: [0u8; 16],
+            values: vec![],
+            ehufco: [0u32; 256],
+            ehufsi: [0u8; 256], // No AC codes at all
+        };
+
+        let block = [0i16; 64]; // DC=0 (diff=0, cat 0), all AC=0 -> needs EOB
+        let mut writer = BitWriter::with_capacity(64);
+        let mut prev_dc = 0i16;
+
+        let result = encode_block(
+            &block, &dc_table, &ac_table, &mut prev_dc, &mut writer,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn encode_ac_rs_missing_code_returns_error()
+    {
+        let mut dc_table = HuffmanTable
+        {
+            bits: [0u8; 16],
+            values: vec![],
+            ehufco: [0u32; 256],
+            ehufsi: [0u8; 256],
+        };
+        dc_table.ehufsi[0] = 1;
+        dc_table.ehufco[0] = 0;
+
+        let mut ac_table = HuffmanTable
+        {
+            bits: [0u8; 16],
+            values: vec![],
+            ehufco: [0u32; 256],
+            ehufsi: [0u8; 256],
+        };
+        // Give EOB a code but NOT the RS=0x01 (run=0, cat=1)
+        ac_table.ehufsi[0x00] = 1;
+        ac_table.ehufco[0x00] = 0;
+
+        let mut block = [0i16; 64];
+        block[1] = 1; // AC coeff: run=0, value=1, cat=1 -> RS=0x01 -> missing
+
+        let mut writer = BitWriter::with_capacity(64);
+        let mut prev_dc = 0i16;
+
+        let result = encode_block(
+            &block, &dc_table, &ac_table, &mut prev_dc, &mut writer,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn encode_ac_zrl_missing_code_returns_error()
+    {
+        let mut dc_table = HuffmanTable
+        {
+            bits: [0u8; 16],
+            values: vec![],
+            ehufco: [0u32; 256],
+            ehufsi: [0u8; 256],
+        };
+        dc_table.ehufsi[0] = 1;
+        dc_table.ehufco[0] = 0;
+
+        let ac_table = HuffmanTable
+        {
+            bits: [0u8; 16],
+            values: vec![],
+            ehufco: [0u32; 256],
+            ehufsi: [0u8; 256],
+        };
+        // No ZRL code (0xF0)
+
+        // 17 zeros then a non-zero -> needs ZRL
+        let mut block = [0i16; 64];
+        block[17] = 5;
+
+        let mut writer = BitWriter::with_capacity(64);
+        let mut prev_dc = 0i16;
+
+        let result = encode_block(
+            &block, &dc_table, &ac_table, &mut prev_dc, &mut writer,
+        );
+        assert!(result.is_err());
+    }
 }
