@@ -63,8 +63,8 @@ pub fn downsample_plane
 
     let h_factor_u32 = h_factor as u32;
     let v_factor_u32 = v_factor as u32;
-    let out_width = (width + h_factor_u32 - 1) / h_factor_u32;
-    let out_height = (height + v_factor_u32 - 1) / v_factor_u32;
+    let out_width = width.div_ceil(h_factor_u32);
+    let out_height = height.div_ceil(v_factor_u32);
 
     let mut downsampled_plane = Vec::with_capacity((out_width * out_height) as usize);
 
@@ -130,8 +130,8 @@ pub fn subsample_chroma
     let cb_sub = downsample_plane(cb, width, height, h_ratio, v_ratio);
     let cr_sub = downsample_plane(cr, width, height, h_ratio, v_ratio);
 
-    let sub_w = (width + h_ratio as u32 - 1) / h_ratio as u32;
-    let sub_h = (height + v_ratio as u32 - 1) / v_ratio as u32;
+    let sub_w = width.div_ceil(h_ratio as u32);
+    let sub_h = height.div_ceil(v_ratio as u32);
 
     (cb_sub, sub_w, sub_h, cr_sub, sub_w, sub_h)
 }

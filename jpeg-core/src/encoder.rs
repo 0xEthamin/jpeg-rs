@@ -180,13 +180,13 @@ fn encode_color(image: &RawImage, config: &EncoderConfig) -> Result<Vec<u8>>
     // Chrominance Cb and Cr share a single pair of tables.
     let mut chr_dc_counts = [0u32; MAX_DC_CATEGORIES];
     let mut chr_ac_counts = [0u32; 256];
-    for i in 0..MAX_DC_CATEGORIES
+    for (i, count) in chr_dc_counts.iter_mut().enumerate()
     {
-        chr_dc_counts[i] = cb_dc_freq.counts[i] + cr_dc_freq.counts[i];
+        *count = cb_dc_freq.counts[i] + cr_dc_freq.counts[i];
     }
-    for i in 0..256
+    for (i, count) in chr_ac_counts.iter_mut().enumerate()
     {
-        chr_ac_counts[i] = cb_ac_freq.counts[i] + cr_ac_freq.counts[i];
+        *count = cb_ac_freq.counts[i] + cr_ac_freq.counts[i];
     }
     let chr_dc_table = build_table(&chr_dc_counts, MAX_DC_CATEGORIES - 1);
     let chr_ac_table = build_table(&chr_ac_counts, 255);
@@ -405,16 +405,16 @@ fn encode_interleaved_scan
     let mcu_height = v_max;
 
     // Number of blocks in the Y component grid.
-    let y_blocks_h = (y_data.width + 7) / 8;
-    let y_blocks_v = (y_data.height + 7) / 8;
+    let y_blocks_h = y_data.width.div_ceil(8);
+    let y_blocks_v = y_data.height.div_ceil(8);
 
     // Number of MCUs that tile the image.
-    let mcus_h = (y_blocks_h + mcu_width - 1) / mcu_width;
-    let mcus_v = (y_blocks_v + mcu_height - 1) / mcu_height;
+    let mcus_h = y_blocks_h.div_ceil(mcu_width);
+    let mcus_v = y_blocks_v.div_ceil(mcu_height);
 
     // Block grid dimensions for chroma components.
-    let cb_blocks_h = (cb_data.width + 7) / 8;
-    let cr_blocks_h = (cr_data.width + 7) / 8;
+    let cb_blocks_h = cb_data.width.div_ceil(8);
+    let cr_blocks_h = cr_data.width.div_ceil(8);
 
     // Running DC predictions (reset at each restart boundary).
     let mut y_prev_dc: i16 = 0;
@@ -430,7 +430,7 @@ fn encode_interleaved_scan
         for mcu_col in 0..mcus_h
         {
             // Restart boundary
-            if ri > 0 && mcu_count > 0 && mcu_count % ri == 0
+            if ri > 0 && mcu_count > 0 && mcu_count.is_multiple_of(ri)
             {
                 writer.flush_with_ones()?;
                 marker::write_rst(writer, rst_counter)?;

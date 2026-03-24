@@ -114,6 +114,14 @@ pub struct DcFrequencies
     pub counts: [u32; MAX_DC_CATEGORIES],
 }
 
+impl Default for DcFrequencies
+{
+    fn default() -> Self
+    {
+        Self::new()
+    }
+}
+
 impl DcFrequencies
 {
     #[must_use]
@@ -139,6 +147,14 @@ pub struct AcFrequencies
 {
     /// `counts[rs]` = number of times composite value `rs` was observed.
     pub counts: [u32; 256],
+}
+
+impl Default for AcFrequencies
+{
+    fn default() -> Self
+    {
+        Self::new()
+    }
 }
 
 impl AcFrequencies
@@ -226,11 +242,11 @@ pub fn build_table(freq: &[u32], max_symbol: usize) -> HuffmanTable
 
     // Collect symbols with non-zero frequency.
     let mut symbols: Vec<(u8, u32)> = Vec::new();
-    for i in 0..num_symbols.min(freq.len())
+    for (i, &count) in freq.iter().enumerate().take(num_symbols)
     {
-        if freq[i] > 0
+        if count > 0
         {
-            symbols.push((i as u8, freq[i]));
+            symbols.push((i as u8, count));
         }
     }
 
@@ -343,9 +359,9 @@ fn compute_code_lengths(symbols: &[(u8, u32)]) -> Vec<(u8, u8)>
     let mut parent    = vec![0usize; max_nodes];
     let mut used      = vec![false; max_nodes];
 
-    for i in 0..n
+    for (i, &(_, freq)) in symbols.iter().enumerate()
     {
-        node_freq[i] = symbols[i].1 as u64;
+        node_freq[i] = freq as u64;
     }
     // Reserved code point at index `n`, frequency 1.
     node_freq[n] = 1;
@@ -372,7 +388,7 @@ fn compute_code_lengths(symbols: &[(u8, u32)]) -> Vec<(u8, u8)>
     // Compute the depth (= code length) for each real symbol.
     // The reserved node at index `n` is excluded from the output.
     let mut result = Vec::with_capacity(n);
-    for i in 0..n
+    for (i, &(sym, _)) in symbols.iter().enumerate()
     {
         let mut depth: u8 = 0;
         let mut node = i;
@@ -381,7 +397,7 @@ fn compute_code_lengths(symbols: &[(u8, u32)]) -> Vec<(u8, u8)>
             node = parent[node];
             depth += 1;
         }
-        result.push((symbols[i].0, depth));
+        result.push((sym, depth));
     }
 
     result
@@ -575,9 +591,9 @@ pub fn collect_frequencies
 
         // AC: count run/size pairs and special symbols.
         let mut zero_run: u8 = 0;
-        for k in 1..64
+        for &coeff in block.iter().skip(1)
         {
-            if block[k] == 0
+            if coeff == 0
             {
                 zero_run += 1;
             }
@@ -589,7 +605,7 @@ pub fn collect_frequencies
                     ac_freq.record_zrl();
                     zero_run -= 16;
                 }
-                ac_freq.record_coefficient(zero_run, block[k]);
+                ac_freq.record_coefficient(zero_run, coeff);
                 zero_run = 0;
             }
         }

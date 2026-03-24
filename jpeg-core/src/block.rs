@@ -53,8 +53,8 @@ pub fn extract_blocks
     height: u32,
 ) -> Vec<Block8x8>
 {
-    let blocks_h = ((width + 7) / 8) as usize;
-    let blocks_v = ((height + 7) / 8) as usize;
+    let blocks_h = width.div_ceil(8) as usize;
+    let blocks_v = height.div_ceil(8) as usize;
 
     let mut blocks = Vec::with_capacity(blocks_h * blocks_v);
 
@@ -91,7 +91,7 @@ pub fn extract_blocks
 #[must_use]
 pub const fn blocks_wide(width: u32) -> u32
 {
-    (width + 7) / 8
+    width.div_ceil(8)
 }
 
 /// Number of 8*8 blocks that span `height` samples vertically.
@@ -99,7 +99,7 @@ pub const fn blocks_wide(width: u32) -> u32
 #[must_use]
 pub const fn blocks_high(height: u32) -> u32
 {
-    (height + 7) / 8
+    height.div_ceil(8)
 }
 
 #[cfg(test)]

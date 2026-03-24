@@ -295,7 +295,7 @@ mod tests
         let scaled = scale_quant_table(&STD_LUMINANCE_QUANT, 1);
         for &v in &scaled
         {
-            assert!(v >= 1 && v <= 255);
+            assert!((1..=255).contains(&v));
         }
         // The smallest base entry (10) * 50 = 500 -> clamped to 255.
         assert_eq!(scaled[2], 255); // base = 10
@@ -320,7 +320,7 @@ mod tests
     {
         // Verify that QuantTable correctly reorders natural -> zig-zag.
         let mut natural = [0u16; 64];
-        for i in 0..64 { natural[i] = i as u16 + 1; }
+        for (i, val) in natural.iter_mut().enumerate() { *val = i as u16 + 1; }
 
         let qt = QuantTable::new(&natural);
 

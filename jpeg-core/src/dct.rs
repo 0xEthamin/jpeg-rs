@@ -264,22 +264,15 @@ pub fn fdct_reference(block: &Block8x8) -> Block8x8
 {
     use std::f64::consts::PI;
 
-    // Pre-compute the cosine lookup table:
-    // cos_table[k][n] = cos((2k + 1) * n * π / 16)
-    let cos_table = 
+    let mut cos_table = [[0.0f64; 8]; 8];
+    for (k, row) in cos_table.iter_mut().enumerate()
     {
-        let mut table = [[0.0f64; 8]; 8];
-        for k in 0..8
+        for (n, cell) in row.iter_mut().enumerate()
         {
-            for n in 0..8
-            {
-                table[k][n] = ((2 * k + 1) as f64 * n as f64 * PI / 16.0).cos();
-            }
+            *cell = ((2 * k + 1) as f64 * n as f64 * PI / 16.0).cos();
         }
-        table
-    };
+    }
 
-    // C(n) = 1/sqrt(2) for n = 0, 1.0 otherwise.
     #[inline]
     fn c(n: usize) -> f64
     {
@@ -312,13 +305,9 @@ mod tests
 {
     use super::*;
 
-    /// Verify that the fast integer DCT matches the reference floating-point
-    /// DCT within +-1 per coefficient.
     #[test]
     fn fast_dct_matches_reference()
     {
-        // Test vector: a block with varied values that exercises all
-        // frequency components.
         let block: Block8x8 = 
         [
             -76, -73, -67, -62, -58, -67, -64, -55,
@@ -346,8 +335,6 @@ mod tests
         }
     }
 
-    /// A flat block (all samples identical) should have a large DC coefficient
-    /// and all AC coefficients close to zero.
     #[test]
     fn dct_of_flat_block()
     {
@@ -361,13 +348,13 @@ mod tests
             result[0],
         );
 
-        for i in 1..64
+        for (i, &coeff) in result.iter().enumerate().skip(1)
         {
             assert!
             (
-                result[i].abs() <= 1,
+                coeff.abs() <= 1,
                 "AC[{}] should be ~0, got {}",
-                i, result[i],
+                i, coeff,
             );
         }
     }

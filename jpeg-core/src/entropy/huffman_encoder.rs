@@ -156,10 +156,8 @@ fn encode_ac_coefficients
 {
     let mut zero_run: u8 = 0;
 
-    for k in 0..63
+    for &coeff in ac.iter().take(63)
     {
-        let coeff = ac[k];
-
         if coeff == 0
         {
             zero_run += 1;
@@ -356,7 +354,7 @@ mod tests
         // Block with no trailing zeros -> no EOB needed.
         let mut block = [0i16; 64];
         block[0] = 50;
-        for i in 1..64 { block[i] = 1; }
+        for coeff in block.iter_mut().skip(1) { *coeff = 1; }
         let (dc, ac) = tables_for(&[block]);
 
         let mut writer = BitWriter::with_capacity(256);

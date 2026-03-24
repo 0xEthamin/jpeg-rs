@@ -344,7 +344,7 @@ pub fn write_dri(w: &mut BitWriter, restart_interval: u16) -> Result<()>
 /// entropy-coded segments when restart is enabled.
 pub fn write_rst(w: &mut BitWriter, restart_counter: u16) -> Result<()>
 {
-    let m = (restart_counter % 8) as u16;
+    let m = restart_counter % 8;
     w.write_u16_be(MARKER_RST0 + m)
 }
 
